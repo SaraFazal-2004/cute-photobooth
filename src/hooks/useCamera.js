@@ -1,17 +1,18 @@
 // src/hooks/useCamera.js
 //
-// Encapsulates getUserMedia: requests the front camera, exposes a status
-// state machine, and cleans the stream up on unmount. Kept separate from
-// App.jsx so the capture/frame logic doesn't have to know how the camera
-// was obtained.
+// Owns getUserMedia. Camera access is only requested when `start()` is
+// called from a real user click (the "Enable camera" button), rather than
+// automatically on page load — that's both better UX (no surprise
+// permission prompt) and required by some browsers, which block
+// getUserMedia unless it happens inside a user gesture.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// "loading" -> "ready" | "denied" | "unsupported"
+// "idle" -> "loading" -> "ready" | "denied" | "unsupported"
 export function useCamera() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
-  const [status, setStatus] = useState("loading");
+  const [status, setStatus] = useState("idle");
 
   const start = useCallback(() => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -35,11 +36,10 @@ export function useCamera() {
   }, []);
 
   useEffect(() => {
-    start();
     return () => {
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
-  }, [start]);
+  }, []);
 
-  return { videoRef, status, retry: start };
+  return { videoRef, status, start };
 }
